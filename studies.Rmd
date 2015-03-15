@@ -1,0 +1,45 @@
+#week 0 - understanding the problem
+
+##Questions to consider
+
+###What do the data look like?
+Um monte de texto. Quando uso o readline ou o scan, aparece um "vetor" com as linhas.
+
+###Where do the data come from?
+De arquivos texto, blogs na internet...
+
+###Can you think of any other data sources that might help you in this project?
+Blogs, jornais e qualquer outro texto publicado na internet.
+
+###What are the common steps in natural language processing?
+1. leitura do arquivo
+2. tokenization
+3. bag of words
+-- extração de metadados numéricos
+4. preserve information
+-- lowercaps, caps...
+5. machine learning
+6. regressão linear
+7. avaliando o eficácia do modelo
+
+###What are some common issues in the analysis of text data?
+
+Pontuação, error de ortografia
+
+###What is the relationship between NLP and the concepts you have learned in the Specialization?
+
+###Quiz
+text1 <- scan("final//en_US//en_US.blogs.txt", character(0), sep = "\n") # separate each line
+
+text1_chars = nchar(text1) # size (in characters) of each name
+summary(text1_chars)
+
+hate <- grep("hate",twitter) # grep lines where pattern happen
+twitter[grep("biostat*",twitter)] # lines where pattern happen
+
+#week 1 - Data acquisition and cleaning
+
+
+
+# Bibliografia
+http://www.r-bloggers.com/natural-language-processing-tutorial/
