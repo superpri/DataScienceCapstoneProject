@@ -52,8 +52,7 @@ news_sample <- readLines(news.file, n=100, encoding="UTF-8")
 
 sample | blog_sample | twitter_sample | news_sample
 -----|-------|---------|-----
-Size| 248.5 MB| 301.4 MB| 249.6 MB
-Lines|899288|2360148|1010242
+Size| 31 kB | 13.3 kB  | 24.2 kB
 Mean Character per line| 257.4 | 67.55 | 189.2
 Mean Word Count| 47.29 | 12.53 | 32.5
 
@@ -65,7 +64,7 @@ I've created one simple sample object containing the three samples above:
 sample <- iconv(as.String(paste(twitter_sample, news_sample, blog_sample, collapse = " ")))
 ```
 
-The first cleaning step is to get rid of the profanity words. For that, I used the [What Do You Love](http://www.wdyl.com/profanity?q=) webservice from Google:
+The first cleaning step is to get rid of the profanity words. For that, I used the [What Do You Love](http://www.wdyl.com/profanity?q=) webservice from Google to discover what words are profane:
 
 ```{r}
 word_ann <- Maxent_Word_Token_Annotator()
@@ -85,7 +84,7 @@ wrds_TF <- mclapply(wrds,isProfanity,mc.cores = 8)
 profanity<-unlist(wrds[grep(TRUE,wrds_TF)])
 ```
 
-To build the corpora it remains necessary to remove punctuation, numbers, stop words and strip any whitespace. As a normalization step, I've lowered cases for all words.
+To build the corpora it remains necessary to remove punctuation, numbers, profanity, stop words and strip any whitespace. As a normalization step, I've lowered cases for all words.
 
 ```{r}
 corpus <- Corpus(VectorSource(sample))
@@ -114,7 +113,7 @@ corpus.tdm.v <- sort(rowSums(corpus.tdm.m),decreasing=TRUE)
 
 It's easy to see through the frequency plots of each n-gram built that the frequency tends to decrease and to stabilize very fast. It makes sense because the frequence that you use one word is largely bigger than two words together, and so on.
 
-#1-gram
+##1-gram
 
 ```{r}
 unigram <- data.frame(Term = corpus.tdm$dimnames$Terms, Freq = corpus.tdm$v) 
@@ -128,7 +127,7 @@ ggplot(head(unigram,15), aes(x=reorder(Term,-Freq), y=Freq)) +
   xlab("Term")
 ```
 
-#2-gram
+##2-gram
 
 ```{r}
 bigram <- data.frame(Term = corpus.tdm.n2$dimnames$Terms, Freq = corpus.tdm.n2$v) 
@@ -142,7 +141,7 @@ ggplot(head(bigram,15), aes(x=reorder(Term,-Freq), y=Freq)) +
   xlab("Term")
 ```
 
-#1-gram
+##3-gram
 
 ```{r}
 threegram <- data.frame(Term = corpus.tdm.n3$dimnames$Terms, Freq = corpus.tdm.n3$v) 
@@ -183,6 +182,4 @@ For the prediction algorithm, I need to choose if I'm going to use Markov chains
 For the Shiny app, I thought it could be very similar to the keyboad/input app that SwiftKey has built in or smartphones: 
 * a textbox where the user is writing their text
 * the prediction algorithm will try to predict the next word, and the Shiny app shows the options predicted
-* the user:
-** if sees his/her word, clicks on it, it appears on the textbox and the user keeps on writing.
-** 
+* the user, if sees his/her word, clicks on it, it appears on the textbox and the user keeps on writing.
