@@ -20,6 +20,7 @@ library(tm)
 library(RColorBrewer)
 library(wordcloud)
 library(stringi)
+library(RWeka)
 ```
 
 I've downloaded the Capstone Dataset from the URL given at [Task 0](https://class.coursera.org/dsscapstone-003/wiki/Task_0) page. It was compressed, I've decompressed it manually and put it inside a directory. 
@@ -87,7 +88,7 @@ profanity<-unlist(wrds[grep(TRUE,wrds_TF)])
 To build the corpora it remains necessary to remove punctuation, numbers, stop words and strip any whitespace. As a normalization step, I've lowered cases for all words.
 
 ```{r}
-corpus <- Corpus(VectorSource(sample_noProfanity))
+corpus <- Corpus(VectorSource(sample))
 corpus <- tm_map(corpus, content_transformer(tolower))
 corpus <- tm_map(corpus, content_transformer(removePunctuation))
 corpus <- tm_map(corpus, content_transformer(removeNumbers))
@@ -100,12 +101,12 @@ Now let's study the frequencies of words in our corpora using 1-gram, 2-gram and
 
 ```{r}
 ngram <- function(x,n) NGramTokenizer(x, Weka_control(min = n, max = n))
-n2-gram <- ngram(x,2)
-n3-gram <- ngram(x,3)
+n2gram <- function(x) ngram(x,2)
+n3gram <- function(x) ngram(x,3)
 
 corpus.tdm <- TermDocumentMatrix(corpus)
-corpus.tdm.n2 <- TermDocumentMatrix(corpus, control = list(tokenize = n2-gram))
-corpus.tdm.n3 <- TermDocumentMatrix(corpus, control = list(tokenize = n2-gram)))
+corpus.tdm.n2 <- TermDocumentMatrix(corpus, control = list(tokenize = n2gram))
+corpus.tdm.n3 <- TermDocumentMatrix(corpus, control = list(tokenize = n3gram))
 
 corpus.tdm.m <- as.matrix(corpus.tdm)
 corpus.tdm.v <- sort(rowSums(corpus.tdm.m),decreasing=TRUE)
@@ -182,4 +183,6 @@ For the prediction algorithm, I need to choose if I'm going to use Markov chains
 For the Shiny app, I thought it could be very similar to the keyboad/input app that SwiftKey has built in or smartphones: 
 * a textbox where the user is writing their text
 * the prediction algorithm will try to predict the next word, and the Shiny app shows the options predicted
-* the user, 
+* the user:
+** if sees his/her word, clicks on it, it appears on the textbox and the user keeps on writing.
+** 
