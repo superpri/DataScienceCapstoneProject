@@ -21,6 +21,7 @@ library(RColorBrewer)
 library(wordcloud)
 library(stringi)
 library(RWeka)
+library(ggplot2)
 ```
 
 I've downloaded the Capstone Dataset from the URL given at [Task 0](https://class.coursera.org/dsscapstone-003/wiki/Task_0) page. It was compressed, I've decompressed it manually and put it inside a directory. 
@@ -160,7 +161,7 @@ I really want to work on spelling problems, and stemmization.
 
 # Report any interesting findings that you amassed so far.
 
-Here's a wordcloud I build for each one of the n-grams calculated.
+Here's three wordclouds I build for each one of the n-grams calculated.
 
 ```{r warning=FALSE}
 ap.d <- data.frame(word = names(corpus.tdm.v),freq=corpus.tdm.v)
@@ -169,11 +170,11 @@ wordcloud(ap.d$word,ap.d$freq, scale=c(8,.2),min.freq=3, max.words=Inf, random.o
 ```
 
 ```{r warning=FALSE}
-wordcloud(bigram$Term,bigram$Freq, scale=c(8,.2),min.freq=2, max.words=Inf, random.order=FALSE, rot.per=.15, colors=pal2)
+wordcloud(bigram$Term,bigram$Freq, scale=c(8,.2),min.freq=1, max.words=Inf, random.order=FALSE, rot.per=.15, colors=pal2)
 ```
 
 ```{r warning=FALSE}
-wordcloud(threegram$Term,threegram$Freq, scale=c(8,.2),min.freq=3, max.words=Inf, random.order=FALSE, rot.per=.15, colors=pal2)
+wordcloud(threegram$Term,threegram$Freq, scale=c(8,.2),min.freq=1, max.words=Inf, random.order=FALSE, rot.per=.15, colors=pal2)
 ```
 
 # Get feedback on your plans for creating a prediction algorithm and Shiny app. 
