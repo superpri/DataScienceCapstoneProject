@@ -12,8 +12,6 @@ Let's load libraries:
 ```{r warning=FALSE}
 library(RCurl)
 library(jsonlite)
-library(NLP)
-library(openNLP)
 library(textcat)
 library(parallel)
 library(tm)
@@ -22,6 +20,7 @@ library(wordcloud)
 library(stringi)
 library(RWeka)
 library(ggplot2)
+library(openNLP)
 ```
 
 I've downloaded the Capstone Dataset from the URL given at [Task 0](https://class.coursera.org/dsscapstone-003/wiki/Task_0) page. It was compressed, I've decompressed it manually and put it inside a directory. 
@@ -43,7 +42,7 @@ Lines|899288|2360148|1010242
 Mean Character per line| 230 | 68.68 | 201.2
 Mean Word Count| 41.75 | 12.75 | 34.41
 
-Here I've read just a sample of each file. Each sample contains 100 lines of the original.
+Here I've read just a sample of each file. Each sample contains 100 lines from the original.
 
 ```{r}
 blog_sample <- readLines(blog.file, n=100, encoding="UTF-8")
@@ -68,10 +67,10 @@ sample <- iconv(as.String(paste(twitter_sample, news_sample, blog_sample, collap
 
 The first cleaning step is to get rid of the profanity words. For that, I used the [What Do You Love](http://www.wdyl.com/profanity?q=) webservice from Google:
 
-```{r eval=FALSE}
+```{r}
 word_ann <- Maxent_Word_Token_Annotator()
 sent_ann <- Maxent_Sent_Token_Annotator()
-sample_annotations <- annotate(sample, list(sent_ann, word_ann))
+sample_annotations <- NLP::annotate(sample, list(sent_ann, word_ann))
 sample_doc <- AnnotatedPlainTextDocument(sample, sample_annotations)
 
 wrds <- as.list(words(sample_doc))
