@@ -17,3 +17,23 @@ saveFileAndUniqueWords <- function(filename, rdataName, lines = 0, path, remove=
         rm (a_list)
     }
 }
+
+getUnigramFreq <- function(x){
+    term <- unlist(strsplit(as.String(x), " "))[1]
+    col <- unigram[unigram$Term == term,]
+    
+    if (nrow(col) == 0)
+        unigram[unigram$Term == "UNK",]$Freq
+    else
+        col$p
+}
+
+getBigramFreq <- function(x){
+    term <- paste(unlist(strsplit(as.String(x), " "))[1:2],collapse=" ")
+    col <- bigram[bigram$Term == term,]
+    
+    if (nrow(col) == 0)
+        getUnigramFreq(term) * 0.4
+    else
+        col$p
+}
