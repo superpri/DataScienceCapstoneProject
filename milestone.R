@@ -5,16 +5,15 @@ library(textcat)
 library(parallel)
 library(tm)
 library(RColorBrewer)
-library(wordcloud)
 library(stringi)
 library(ggplot2)
 library(openNLP)
 
 #windows
-directory <- "C:\\Users\\Home\\Documents\\capstone\\dataset\\en_US\\"
+#directory <- "C:\\Users\\Home\\Documents\\capstone\\dataset\\en_US\\"
 
 #linux
-#directory <- "C:\\Users\\Home\\Documents\\capstone\\dataset\\en_US\\"
+directory <- "/home/rstudio/database/"
 
 blog.file <- paste(directory,"en_US.blogs.txt", sep = "")
 twitter.file <- paste(directory,"en_US.twitter.txt", sep = "")
@@ -24,21 +23,9 @@ blog <- readLines(blog.file, encoding="UTF-8")
 twitter <- readLines(twitter.file, encoding="UTF-8")
 news <- readLines(news.file, encoding="UTF-8")
 
-blog.stats <- stri_stats_general(blog)
-twitter.stats <- stri_stats_general(twitter)
-news.stats <- stri_stats_general(news)
-
-blog.summary <- summary(sapply(blog,FUN=nchar))
-twitter.summary <- summary(sapply(twitter,FUN=nchar))
-news.summary <- summary(sapply(news,FUN=nchar))
-
-blog.wordCount <- summary(stri_count_words(blog))
-twitter.wordCount <- summary(stri_count_words(twitter))
-news.wordCount <- summary(stri_count_words(news))
-
-blog.sample <- head(blog, 1000)
-twitter.sample <- head(twitter, n=1000)
-news.sample <- head(news, 1000)
+blog.sample <- head(blog, 100)
+twitter.sample <- head(twitter, n=100)
+news.sample <- head(news, 100)
 sample <- iconv(as.String(paste(twitter.sample, news.sample, blog.sample, collapse = " ")))
 
 word_ann <- Maxent_Word_Token_Annotator()
@@ -52,7 +39,7 @@ isProfanity <- function(w){
              error = function(err){return(FALSE)},
              warning = function(war){return(FALSE)});
 }
-wrds_TF <- mclapply(wrds,isProfanity,mc.cores = 1)
+wrds_TF <- mclapply(wrds,isProfanity, mc.cores = 4)
 profanity<-unlist(wrds[grep(TRUE,wrds_TF)])
 
 corpus <- Corpus(VectorSource(sample))

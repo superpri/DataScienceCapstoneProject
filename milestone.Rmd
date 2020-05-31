@@ -1,15 +1,17 @@
 ---
 title: "Capstone Project - Milestone Report"
 author: "Priscilla Kurtz"
-date: "03/26/2015"
+date: "05/30/2020"
 output: html_document
 ---
 
-# Demonstrate that you've downloaded the data and have successfully loaded it in.
+# Synopsis
 
-Let's load libraries:
+The Capstone Project objective is to build a predictive text model from [HC Corpora](http://www.corpora.heliohost.org) database. The model should suggest the next word based on the previous words used. The text documents are provided from different three web sources: blogs, twitter and news articles. This report shows the first exploration on the data.
 
-```{r warning=FALSE}
+Libraries used for this exploration:
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
 library(RCurl)
 library(jsonlite)
 library(textcat)
@@ -18,168 +20,176 @@ library(tm)
 library(RColorBrewer)
 library(wordcloud)
 library(stringi)
-library(RWeka)
 library(ggplot2)
 library(openNLP)
+library(textmineR)
+library(RWeka)
+library(dplyr)
 ```
+
+# Download data and load it in
 
 I've downloaded the Capstone Dataset from the URL given at [Task 0](https://class.coursera.org/dsscapstone-003/wiki/Task_0) page. It was compressed, I've decompressed it manually and put it inside a directory. 
 
 There are four languages for each sample files - German, English, Finnish and Russian. Each sample is composed of three files: one from blogs, another from twitter and the last one with data attached to news. I'll focus only on the English files.
 
-```{r}
-blog.file <- "//home//superpri//coursera//dataScienceSpecialization//DataScienceCapstoneProject//data//final//en_US//en_US.blogs.txt"
-twitter.file <- "//home//superpri//coursera//dataScienceSpecialization//DataScienceCapstoneProject//data//final//en_US//en_US.twitter.txt"
-news.file <- "//home//superpri//coursera//dataScienceSpecialization//DataScienceCapstoneProject//data//final//en_US//en_US.news.txt"
+```{r, cache=TRUE, warning=FALSE}
+directory <- "C:\\Users\\Home\\Documents\\capstone\\dataset\\en_US\\"
+
+blog.file <- paste(directory,"en_US.blogs.txt", sep = "")
+twitter.file <- paste(directory,"en_US.twitter.txt", sep = "")
+news.file <- paste(directory,"en_US.news.txt", sep = "")
+
+blog <- readLines(blog.file, encoding="UTF-8")
+twitter <- readLines(twitter.file, encoding="UTF-8")
+news <- readLines(news.file, encoding="UTF-8")
 ```
 
-Some files stats I've collected manually (apparently R thinks my computer doesn't have enought memory to handle all operations):
+# Basic report of summary statistics about the data sets
+
+```{r, cache=TRUE, warning=FALSE}
+blog.stats <- stri_stats_general(blog)
+twitter.stats <- stri_stats_general(twitter)
+news.stats <- stri_stats_general(news)
+
+blog.summary <- summary(sapply(blog,FUN=nchar))
+twitter.summary <- summary(sapply(twitter,FUN=nchar))
+news.summary <- summary(sapply(news,FUN=nchar))
+
+blog.wordCount <- summary(stri_count_words(blog))
+twitter.wordCount <- summary(stri_count_words(twitter))
+news.wordCount <- summary(stri_count_words(news))
+```
+
+Here are some stats of our data:
 
 File | blogs | twitter | news
 -----|-------|---------|-----
-Size| 248.5 MB| 301.4 MB| 249.6 MB
-Lines|899288|2360148|1010242
-Mean Character per line| 230 | 68.68 | 201.2
-Mean Word Count| 41.75 | 12.75 | 34.41
+Size| `r round(file.info(blog.file)$size / 1024 / 1024,2)` MB | `r round (file.info(twitter.file)$size / 1024 / 1024,2)` MB| `r round (file.info(news.file)$size / 1024 / 1024,2)` MB
+Lines|`r blog.stats[["Lines"]]`|`r twitter.stats[["Lines"]]`|`r news.stats[["Lines"]]`
+Mean Character Per Line| `r round(blog.summary[["Mean"]],2)` | `r round(twitter.summary[["Mean"]],2)` | `r round(news.summary[["Mean"]],2)`
+Mean Word Count| `r round(blog.wordCount[["Mean"]],2)` | `r round(twitter.wordCount[["Mean"]],2)` | `r round(news.wordCount[["Mean"]],2)`
 
-Here I've read just a sample of each file. Each sample contains 100 lines from the original.
+# Data Cleanning and Preprocessing
 
-```{r}
-blog_sample <- readLines(blog.file, n=100, encoding="UTF-8")
-twitter_sample <- readLines(twitter.file, n=100, encoding="UTF-8")
-news_sample <- readLines(news.file, n=100, encoding="UTF-8")
+Since files are too big and to build the model we don't need to work with all of it, I've created one sample object with three samples from our data to build our corpora: 
+
+```{r , cache=TRUE, warning=FALSE}
+blog.sample <- head(blog, 3000)
+twitter.sample <- head(twitter, n=3000)
+news.sample <- head(news, 3000)
+sample <- iconv(as.String(paste(twitter.sample, news.sample, blog.sample, collapse = " ")))
 ```
 
-sample | blog_sample | twitter_sample | news_sample
------|-------|---------|-----
-Size| 31 kB | 13.3 kB  | 24.2 kB
-Mean Character per line| 257.4 | 67.55 | 189.2
-Mean Word Count| 47.29 | 12.53 | 32.5
+We still need to remove punctuation, numbers, stop words and strip any whitespace. As a normalization step, I've lowered cases for all words. To build our corpora we use _tm_ package.
 
-# Create a basic report of summary statistics about the data sets.
-
-I've created one simple sample object containing the three samples above: 
-
-```{r}
-sample <- iconv(as.String(paste(twitter_sample, news_sample, blog_sample, collapse = " ")))
-```
-
-The first cleaning step is to get rid of the profanity words. For that, I used the [What Do You Love](http://www.wdyl.com/profanity?q=) webservice from Google to discover what words are profane:
-
-```{r}
-word_ann <- Maxent_Word_Token_Annotator()
-sent_ann <- Maxent_Sent_Token_Annotator()
-sample_annotations <- NLP::annotate(sample, list(sent_ann, word_ann))
-sample_doc <- AnnotatedPlainTextDocument(sample, sample_annotations)
-
-wrds <- as.list(words(sample_doc))
-
-isProfanity <- function(w){
-    tryCatch({u <- paste(c("http://www.wdyl.com/profanity?q=",w), collapse = '')
-              fromJSON(getURLContent(u))$response == "true"},
-             error = function(err){return(FALSE)},
-             warning = function(war){return(FALSE)});
-}
-wrds_TF <- mclapply(wrds,isProfanity,mc.cores = 8)
-profanity<-unlist(wrds[grep(TRUE,wrds_TF)])
-```
-
-To build the corpora it remains necessary to remove punctuation, numbers, profanity, stop words and strip any whitespace. As a normalization step, I've lowered cases for all words.
-
-```{r}
-corpus <- Corpus(VectorSource(sample))
+```{r, cache=TRUE, warning=FALSE}
+corpus <- VCorpus(VectorSource(sample))
 corpus <- tm_map(corpus, content_transformer(tolower))
 corpus <- tm_map(corpus, content_transformer(removePunctuation))
 corpus <- tm_map(corpus, content_transformer(removeNumbers))
 corpus <- tm_map(corpus, stripWhitespace)
 corpus <- tm_map(corpus, function(x) removeWords(x, stopwords("english")))
-corpus <- tm_map(corpus, function(x) removeWords(x, profanity))
 ```
 
-Now let's study the frequencies of words in our corpora using 1-gram, 2-gram and 3-gram.
+Let's study the frequencies of words in our corpora using 1-gram, 2-gram and 3-gram.
 
 ```{r}
 ngram <- function(x,n) NGramTokenizer(x, Weka_control(min = n, max = n))
+n1gram <- function(x) ngram(x,1)
 n2gram <- function(x) ngram(x,2)
 n3gram <- function(x) ngram(x,3)
-
 corpus.tdm <- TermDocumentMatrix(corpus)
+corpus.tdm.n1 <- TermDocumentMatrix(corpus, control = list(tokenize = n1gram))
 corpus.tdm.n2 <- TermDocumentMatrix(corpus, control = list(tokenize = n2gram))
 corpus.tdm.n3 <- TermDocumentMatrix(corpus, control = list(tokenize = n3gram))
-
 corpus.tdm.m <- as.matrix(corpus.tdm)
 corpus.tdm.v <- sort(rowSums(corpus.tdm.m),decreasing=TRUE)
 ```
 
-It's easy to see through the frequency plots of each n-gram built that the frequency tends to decrease and to stabilize very fast. It makes sense because the frequence that you use one word is largely bigger than two words together, and so on.
-
-##1-gram
+## 1-gram
 
 ```{r}
-unigram <- data.frame(Term = corpus.tdm$dimnames$Terms, Freq = corpus.tdm$v) 
+unigram <- data.frame(Term = corpus.tdm.n1$dimnames$Terms, 
+                      Freq = corpus.tdm.n1$v) 
 unigram <- unigram[order(unigram$Freq,decreasing = T),] 
 
-ggplot(head(unigram,15), aes(x=reorder(Term,-Freq), y=Freq)) +
-  geom_bar(stat="Identity") +
+unigram.cumsum <- cumsum(unigram$Freq)
+limit50 <- sum(unigram$Freq)*0.5
+limit90 <- sum(unigram$Freq) * 0.9
+
+ggplot(head(unigram,20), aes(x=reorder(Term,-Freq), y=Freq)) +
+  geom_bar(stat="Identity", fill="green") +
   geom_text(aes(label=Freq), vjust = -0.5) +
   ggtitle("1-gram frequency plot") +
   ylab("Frequency") +
-  xlab("Term")
+  xlab("Term")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-##2-gram
+It's easy to see through the frequency plot that frequency tends to decrease and to stabilize very fast. It makes sense because the frequency you use one word is largely bigger than two words together, and so on.
+
+We have `r nrow(unigram)` unique words on this sample, and `r nrow(unigram %>% filter(Freq == 1))` words occurs only one time.
+
+We need `r length((unigram.cumsum[unigram.cumsum <=  limit50]))` to cover 50% of the instances and `r length((unigram.cumsum[unigram.cumsum <=  limit90]))` words to cover 90% of the instances.
+
+## 2-gram
 
 ```{r}
-bigram <- data.frame(Term = corpus.tdm.n2$dimnames$Terms, Freq = corpus.tdm.n2$v) 
+bigram <- data.frame(Term = corpus.tdm.n2$dimnames$Terms, 
+                     Freq = corpus.tdm.n2$v) 
 bigram <- bigram[order(bigram$Freq,decreasing = T),] 
 
-ggplot(head(bigram,15), aes(x=reorder(Term,-Freq), y=Freq)) +
+bigram.cumsum <- cumsum(bigram$Freq)
+bigram.limit50 <- sum(bigram$Freq)*0.5
+bigram.limit90 <- sum(bigram$Freq) * 0.9
+
+ggplot(head(bigram,20), aes(x=reorder(Term,-Freq), y=Freq)) +
   geom_bar(stat="Identity", fill="yellow") +
   geom_text(aes(label=Freq), vjust = -0.5) +
   ggtitle("2-gram frequency plot") +
   ylab("Frequency") +
-  xlab("Term")
+  xlab("Term") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-##3-gram
+We have `r nrow(bigram)` unique pair of words on this sample but `r nrow(bigram %>% filter(Freq == 1))` pair of words occurs only one time.
+
+We need `r length((bigram.cumsum[bigram.cumsum <=  limit50]))` to cover 50% of the instances and `r length((bigram.cumsum[bigram.cumsum <= limit90]))` words to cover 90% of the instances.
+
+## 3-gram
 
 ```{r}
 threegram <- data.frame(Term = corpus.tdm.n3$dimnames$Terms, Freq = corpus.tdm.n3$v) 
 threegram <- threegram[order(threegram$Freq,decreasing = T),] 
 
+threegram.cumsum <- cumsum(threegram$Freq)
+threegram.limit50 <- sum(threegram$Freq)*0.5
+threegram.limit90 <- sum(threegram$Freq) * 0.9
+
 ggplot(head(threegram,15), aes(x=reorder(Term,-Freq), y=Freq)) +
-  geom_bar(stat="Identity",) +
+  geom_bar(stat="Identity",fill="blue") +
   geom_text(aes(label=Freq), vjust = -0.5) +
   ggtitle("3-gram frequency plot") +
   ylab("Frequency") +
-  xlab("Term")
+  xlab("Term") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-I really want to work on spelling problems, and stemmization.
+We have `r nrow(threegram)` unique set of three words on this sample but `r nrow(threegram %>% filter(Freq == 1))` set of three words occurs only one time.
 
-# Report any interesting findings that you amassed so far.
+We need `r length((threegram.cumsum[threegram.cumsum <=  limit50]))` to cover 50% of the instances and `r length((threegram.cumsum[threegram.cumsum <= limit90]))` words to cover 90% of the instances.
 
-Here's three wordclouds I build for each one of the n-grams calculated.
+# Next Steps
 
-```{r warning=FALSE}
-ap.d <- data.frame(word = names(corpus.tdm.v),freq=corpus.tdm.v)
-pal2 <- brewer.pal(8,"Dark2")
-wordcloud(ap.d$word,ap.d$freq, scale=c(8,.2),min.freq=3, max.words=Inf, random.order=FALSE, rot.per=.15, colors=pal2)
-```
-
-```{r warning=FALSE}
-wordcloud(bigram$Term,bigram$Freq, scale=c(8,.2),min.freq=1, max.words=Inf, random.order=FALSE, rot.per=.15, colors=pal2)
-```
-
-```{r warning=FALSE}
-wordcloud(threegram$Term,threegram$Freq, scale=c(8,.2),min.freq=1, max.words=Inf, random.order=FALSE, rot.per=.15, colors=pal2)
-```
-
-# Get feedback on your plans for creating a prediction algorithm and Shiny app. 
-
-For the prediction algorithm, I need to choose if I'm going to use Markov chains or other approach using the n-grams. I also want to consider the removal of stopwords in the case I want to predict them.
-
-For the Shiny app, I thought it could be very similar to the keyboad/input app that SwiftKey has built in or smartphones: 
-* a textbox where the user is writing their text
-* the prediction algorithm will try to predict the next word, and the Shiny app shows the options predicted
-* the user, if sees his/her word, clicks on it, it appears on the textbox and the user keeps on writing.
+* Build prediction model
+    + Remove profanity
+    + Research how to evaluate the model.
+    + Test algorithms that can predict probability for more than one response, so we can offer alternatives to the user.
+    + Use 2-gram, 3-gram, 4-gram and 5-gram to predict next word.
+    + Use [Katz's back-off model](http://en.wikipedia.org/wiki/Katz's_back-off_model).
+* Create shinny app
+    + Consider the size in memory and performance (runtime) of the model.
+    + Develop and publish the app in shinyapps.io and check the resources consuption.
+    + Let some friend test the app and give some feedback.
+* Create a cool presentation
