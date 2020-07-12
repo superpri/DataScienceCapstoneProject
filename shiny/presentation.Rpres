@@ -1,0 +1,48 @@
+Web Text Predictor
+========================================================
+author: Priscilla Kurtz
+date: July 8th, 2020
+
+Introduction
+========================================================
+
+Imagine you can have inside your email or notebook application something that helps you predict what could be the best word to finish your sentence...
+
+That's the base problem for me to create this web text predictor.
+
+The Model
+========================================================
+
+To build a predictive text model I used [HC Corpora](http://www.corpora.heliohost.org) word database. 
+
+The model should suggest the next word based on the previous words used. The text documents are provided from different three web sources: blogs, twitter and news articles.
+
+In order to predict the next word, I had to choose an algorithm.
+
+The Algorithm
+========================================================
+
+We have a bunch of algorithms in NLP to choose from but the Shiny Servers gives us some hardware and storage limitations.
+
+I choose the Backoff method: you go back to a n-1 gram level to calculate the probabilities when you encounter a word with probability equals to 0.
+
+The most used scheme inside the Backoff method is the "stupid backoff": whenever you go back one level you multiply the odds always by 0.4. You can go back to the unigram model if needed multiplying by 0.4^n where n is the number of times you backed off.
+
+Model Performance
+========================================================
+
+Since the Stupid Backoff has not much intelligence on scoring grams, performance on choosing the best word isn't great but it works to demo the possibility of this solution.
+
+Since this is a demo, I also had to shrink the database used to make the best use of the resources available. I mapped four N-Grams to data tables having the keys of the words in an element (1 key for unigram, 2 keys for bigram, 3 keys for trigram, 4 keys for tetragram) and a score for that element.
+
+The accuracy can be higher by increasing the sample size but it can lead to extended prediction time.
+Response time is around to 0.003s
+
+
+How to use?
+========================================================
+
+All you need to do is write your sentence in the box and click on the button.
+
+![How to use the Web Text Predictor](app.png)
+
